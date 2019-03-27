@@ -1,10 +1,3 @@
-//
-//  CustomErrorMiddleware.swift
-//  Letterer/ExtendedError
-//
-//  Created by Marcin Czachurski on 14/11/2018.
-//
-
 import Vapor
 
 /// Captures all errors and transforms them into an internal server error HTTP response.

@@ -1,10 +1,3 @@
-//
-//  Terminate.swift
-//  Letterer/ExtendedError
-//
-//  Created by Marcin Czachurski on 14/11/2018.
-//
-
 import Vapor
 
 /// Default implementation of `TerminateError`.
