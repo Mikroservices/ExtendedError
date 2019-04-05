@@ -1,5 +1,7 @@
 # :beetle: ExtendedError
 
+[![Build Status](https://travis-ci.org/Mikroservices/ExtendedError.svg?branch=master)](https://travis-ci.org/Mikroservices/ExtendedError) [![Swift 4.0](https://img.shields.io/badge/Swift-4.0-orange.svg?style=flat)](ttps://developer.apple.com/swift/) [![Platforms OS X | Linux](https://img.shields.io/badge/Platforms-OS%20X%20%7C%20Linux%20-lightgray.svg?style=flat)](https://developer.apple.com/swift/)
+
 Custom error middleware for Vapor. Thanks to this extended error you can create errors with additional field:  `code`. Example:
 
 ```swift
@@ -38,7 +40,7 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
 Downloading source code and building in command line:
 
 ```bash
-$ git clone https://github.com/Letterer/ExtendedError.git
+$ git clone https://github.com/Mikroservices/ExtendedError.git
 $ swift package update
 $ swift build
 ```
