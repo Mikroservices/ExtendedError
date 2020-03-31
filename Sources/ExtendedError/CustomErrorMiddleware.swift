@@ -1,7 +1,8 @@
 import Vapor
+import Foundation
 
 /// Captures all errors and transforms them into an internal server error HTTP response.
-public final class CustomErrorMiddleware: Middleware, ServiceType {
+public final class CustomErrorMiddleware: Middleware {
 
     /// Structure of `CustomErrorMiddleware` default response.
     internal struct ErrorResponse: Codable {
@@ -11,106 +12,92 @@ public final class CustomErrorMiddleware: Middleware, ServiceType {
         /// The reason for the error.
         var reason: String
 
-        // The code of the reason.
+        /// The code of the reason.
         var code: String?
+        
+        /// List with validation failures.
+        var failures: [ValidationFailure]?
     }
-
-    /// See `ServiceType`.
-    public static func makeService(for worker: Container) throws -> CustomErrorMiddleware {
-        return try .default(environment: worker.environment, log: worker.make())
+    
+    /// Structure for validation error failures.
+    internal struct ValidationFailure: Codable {
+        /// Field with validation error.
+        var field: String
+        
+        /// Validation message.
+        var failure: String?
     }
-
-    /// Create a `CustomErrorMiddleware`. Logs errors to a `Logger` based on `Environment`
-    /// and converts `Error` to `Response` based on conformance to `AbortError` and `Debuggable`.
-    ///
-    /// - parameters:
-    ///     - environment: The environment to respect when presenting errors.
-    ///     - log: Log destination.
-    public static func `default`(environment: Environment, log: Logger) -> CustomErrorMiddleware {
-        return .init { req, error in
-            // log the error
-            log.report(error: error, verbose: !environment.isRelease)
-
-            // variables to determine
-            let status: HTTPResponseStatus
-            let reason: String
-            let headers: HTTPHeaders
-            let code: String?
-
-            // inspect the error type
-            switch error {
-            case let terminate as TerminateError:
-                // this is an terminate error, we should use its status, reason, code, and headers
-                reason = terminate.reason
-                status = terminate.status
-                headers = terminate.headers
-                code = terminate.code
-            case let abort as AbortError:
-                // this is an abort error, we should use its status, reason, and headers
-                reason = abort.reason
-                status = abort.status
-                headers = abort.headers
-                code = "abortError"
-            case let validation as ValidationError:
-                // this is a validation error
-                reason = validation.reason
-                status = .badRequest
-                headers = [:]
-                code = "validationError"
-            case let debuggable as Debuggable where !environment.isRelease:
-                // if not release mode, and error is debuggable, provide debug
-                // info directly to the developer
-                reason = debuggable.reason
-                status = .internalServerError
-                headers = [:]
-                code = "internalApplicationError"
-            default:
-                // not an abort error, and not debuggable or in dev mode
-                // just deliver a generic 500 to avoid exposing any sensitive error info
-                reason = "Something went wrong."
-                status = .internalServerError
-                headers = [:]
-                code = "internalApplicationError"
-            }
-
-            // create a Response with appropriate status
-            let res = req.response(http: .init(status: status, headers: headers))
-
-            // attempt to serialize the error to json
-            do {
-                let errorResponse = ErrorResponse(error: true, reason: reason, code: code)
-                res.http.body = try HTTPBody(data: JSONEncoder().encode(errorResponse))
-                res.http.headers.replaceOrAdd(name: .contentType, value: "application/json; charset=utf-8")
-            } catch {
-                res.http.body = HTTPBody(string: "Oops: \(error)")
-                res.http.headers.replaceOrAdd(name: .contentType, value: "text/plain; charset=utf-8")
-            }
-            return res
+    
+    public init() {
+    }
+    
+    /// See `Middleware`.
+    public func respond(to request: Request, chainingTo next: Responder) -> EventLoopFuture<Response> {
+        let response = next.respond(to: request)
+        return response.flatMapError { error in
+            return self.body(request: request, error: error)
         }
     }
 
     /// Error-handling closure.
-    private let closure: (Request, Error) -> (Response)
+    private func body(request: Request, error: Error) -> EventLoopFuture<Response> {
 
-    /// Create a new `CustomErrorMiddleware`.
-    ///
-    /// - parameters:
-    ///     - closure: Error-handling closure. Converts `Error` to `Response`.
-    public init(_ closure: @escaping (Request, Error) -> (Response)) {
-        self.closure = closure
-    }
+        let logger = request.application.logger
+        
+        // log the error
+        logger.report(error: error)
 
-    /// See `Middleware`.
-    public func respond(to req: Request, chainingTo next: Responder) throws -> Future<Response> {
-        let response: Future<Response>
-        do {
-            response = try next.respond(to: req)
-        } catch {
-            response = req.eventLoop.newFailedFuture(error: error)
+        // variables to determine
+        let status: HTTPResponseStatus
+        let reason: String
+        let headers: HTTPHeaders
+        let code: String?
+        var failures: [ValidationFailure]?
+
+        // inspect the error type
+        switch error {
+        case let terminate as TerminateError:
+            reason = terminate.reason
+            status = terminate.status
+            headers = terminate.headers
+            code = terminate.code
+        case let validation as Vapor.ValidationsError:
+            reason = "Validation errors occurs."
+            
+            failures = []
+            for failure in validation.failures {
+                failures?.append(ValidationFailure(field: failure.key.stringValue, failure: failure.result.failureDescription))
+            }
+            
+            status = .badRequest
+            headers = [:]
+            code = "validationError"
+        case let abort as AbortError:
+            reason = abort.reason
+            status = abort.status
+            headers = abort.headers
+            code = "abortError"
+        default:
+            reason = "Something went wrong."
+            status = .internalServerError
+            headers = [:]
+            code = "internalApplicationError"
         }
 
-        return response.mapIfError { error in
-            return self.closure(req, error)
+        // Attempt to serialize the error to json.
+        do {
+            let errorResponse = ErrorResponse(error: true, reason: reason, code: code, failures: failures)
+            let body = try Response.Body(data: JSONEncoder().encode(errorResponse))
+            let response = Response(status: status, headers: headers, body: body)
+            response.headers.replaceOrAdd(name: .contentType, value: "application/json; charset=utf-8")
+
+            return request.eventLoop.makeSucceededFuture(response)
+        } catch {
+            let body = Response.Body(string: "Oops: \(error)")
+            let response = Response(status: status, headers: headers, body: body)
+            response.headers.replaceOrAdd(name: .contentType, value: "text/plain; charset=utf-8")
+            
+            return request.eventLoop.makeSucceededFuture(response)
         }
     }
 }

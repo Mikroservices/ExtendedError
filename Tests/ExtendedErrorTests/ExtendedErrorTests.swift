@@ -3,10 +3,7 @@ import XCTest
 
 final class ExtendedErrorTests: XCTestCase {
     func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
-        XCTAssertEqual(ExtendedError().text, "Hello, World!")
+        XCTAssertEqual(Terminate(.badRequest, code: ".errorInCode").code, ".errorInCode")
     }
 
     static var allTests = [

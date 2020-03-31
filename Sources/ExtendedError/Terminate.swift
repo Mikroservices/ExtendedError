@@ -6,16 +6,26 @@ import Vapor
 ///
 public struct Terminate: TerminateError {
 
-    public var identifier: String
+    /// HTTP response status (400/401/403 etc.).
+    public let status: HTTPResponseStatus
+    
+    /// Custom response headers.
+    public let headers: HTTPHeaders
+    
+    /// Error code.
+    public let code: String
+    
+    /// Error reason.
+    public let reason: String
+    
+    /// Fixes suggested for user.
+    public let suggestedFixes: [String]
 
-    public var status: HTTPResponseStatus
-    public var headers: HTTPHeaders
-    public var reason: String
-    public var code: String
-
-    public var sourceLocation: SourceLocation?
-    public var stackTrace: [String]
-    public var suggestedFixes: [String]
+    /// Error location in the source.
+    public let sourceLocation: SourceLocation?
+    
+    /// Current stack trace.
+    public let stackTrace: [String]
 
     /// Create a new `Terminate`, capturing current source location info.
     public init(
@@ -23,20 +33,18 @@ public struct Terminate: TerminateError {
         headers: HTTPHeaders = [:],
         code: String,
         reason: String? = nil,
-        identifier: String? = nil,
         suggestedFixes: [String] = [],
         file: String = #file,
         function: String = #function,
         line: UInt = #line,
         column: UInt = #column
     ) {
-        self.identifier = status.code.description
+        self.status = status
         self.headers = headers
         self.code = code
-        self.status = status
         self.reason = reason ?? status.reasonPhrase
         self.suggestedFixes = suggestedFixes
         self.sourceLocation = SourceLocation(file: file, function: function, line: line, column: column, range: nil)
-        self.stackTrace = Terminate.makeStackTrace()
+        self.stackTrace = Thread.callStackSymbols
     }
 }

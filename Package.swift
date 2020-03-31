@@ -1,19 +1,27 @@
-// swift-tools-version:4.2
+// swift-tools-version:5.2
 // The swift-tools-version declares the minimum version of Swift required to build this package.
-
 import PackageDescription
 
 let package = Package(
     name: "ExtendedError",
+    platforms: [
+       .macOS(.v10_15)
+    ],
     products: [
         .library(name: "ExtendedError", targets: ["ExtendedError"]),
+        .library(name: "ExtendedErrorTests", targets: ["ExtendedErrorTests"])
     ],
     dependencies: [
-        // 💧 A server-side Swift web framework.
-        .package(url: "https://github.com/vapor/vapor.git", from: "3.0.0"),
+        // 💧 A server-side Swift web framework. 
+        .package(url: "https://github.com/vapor/vapor.git", .upToNextMajor(from: "4.0.0-rc.3.12")),
     ],
     targets: [
-        .target(name: "ExtendedError", dependencies: ["Vapor"]),
-        .testTarget(name: "ExtendedErrorTests", dependencies: ["ExtendedError"]),
+        .target(name: "ExtendedError", dependencies: [
+            .product(name: "Vapor", package: "vapor")
+        ]),
+        .testTarget(name: "ExtendedErrorTests", dependencies: [
+            .product(name: "Vapor", package: "vapor"),
+            .target(name: "ExtendedError")
+        ])
     ]
 )
