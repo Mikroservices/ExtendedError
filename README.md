@@ -1,6 +1,10 @@
 # :beetle: ExtendedError
 
-[![Build Status](https://travis-ci.org/Mikroservices/ExtendedError.svg?branch=master)](https://travis-ci.org/Mikroservices/ExtendedError) [![Swift 4.0](https://img.shields.io/badge/Swift-4.0-orange.svg?style=flat)](ttps://developer.apple.com/swift/) [![Platforms OS X | Linux](https://img.shields.io/badge/Platforms-OS%20X%20%7C%20Linux%20-lightgray.svg?style=flat)](https://developer.apple.com/swift/)
+![Build Status](https://github.com/Mikroservices/ExtendedError/workflows/Build/badge.svg)
+[![Swift 5.2](https://img.shields.io/badge/Swift-5.2-orange.svg?style=flat)](ttps://developer.apple.com/swift/)
+[![Vapor 4](https://img.shields.io/badge/vapor-4.0-blue.svg?style=flat)](https://vapor.codes)
+[![Swift Package Manager](https://img.shields.io/badge/SPM-compatible-4BC51D.svg?style=flat)](https://swift.org/package-manager/)
+[![Platforms OS X | Linux](https://img.shields.io/badge/Platforms-OS%20X%20%7C%20Linux%20-lightgray.svg?style=flat)](https://developer.apple.com/swift/)
 
 Custom error middleware for Vapor. Thanks to this extended error you can create errors with additional field:  `code`. Example:
 
@@ -20,35 +24,58 @@ Thanks to this to client will be send below JSON:
 
 This is super important if you want to show user custom message based on `code` key (for example in different languages). 
 
-## Registering in Vapor
+## Getting started
+
+You need to add library to `Package.swift` file:
+
+ - add package to dependencies:
+```swift
+.package(url: "https://github.com/Mikroservices/ExtendedError.git", from: "2.0.0")
+```
+
+- and add product to your target:
+```swift
+.target(name: "App", dependencies: [
+    .product(name: "Vapor", package: "vapor"),
+    .product(name: "ExtendedError", package: "ExtendedError")
+])
+```
+
+Then you can add middleware to Vapor:
 
 ```swift
-/// Called before your application initializes.
-public func configure(_ config: inout Config, _ env: inout Environment, _ services: inout Services) throws {
-    var middlewares = MiddlewareConfig() // Create _empty_ middleware config
+import App
+import Vapor
+import ExtendedError
 
-    // Catches errors and converts to HTTP response
-    services.register(CustomErrorMiddleware.self)
-    middlewares.use(CustomErrorMiddleware.self)
+var env = try Environment.detect()
+try LoggingSystem.bootstrap(from: &env)
 
-    services.register(middlewares)
-}
+let app = Application(env)
+
+// Add error middleware.
+let errorMiddleware = CustomErrorMiddleware()
+app.middleware.use(errorMiddleware)
+
+defer { app.shutdown() }
+
+try configure(app)
+try app.run()
 ```
 
 ## Developing
 
-Downloading source code and building in command line:
+Download the source code and run in command line:
 
 ```bash
 $ git clone https://github.com/Mikroservices/ExtendedError.git
 $ swift package update
 $ swift build
 ```
-Opening project in XCode:
+Run the following command if you want to open project in Xcode:
 
 ```bash
-$ swift package generate-xcodeproj
-$ open ExtendedError.xcodeproj
+$ open Package.swift
 ```
 
 ## Contributing
