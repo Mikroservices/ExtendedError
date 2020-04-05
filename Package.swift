@@ -8,8 +8,7 @@ let package = Package(
        .macOS(.v10_15)
     ],
     products: [
-        .library(name: "ExtendedError", targets: ["ExtendedError"]),
-        .library(name: "ExtendedErrorTests", targets: ["ExtendedErrorTests"])
+        .library(name: "ExtendedError", targets: ["ExtendedError"])
     ],
     dependencies: [
         // 💧 A server-side Swift web framework. 
